@@ -340,12 +340,28 @@ class BaseComputation(ComputationAPI, Configurable):
 
             show_debug2 = computation.logger.show_debug2
 
+            from binascii import hexlify
             opcode_lookup = computation.opcodes
+            n_ops = 0
             for opcode in computation.code:
                 try:
                     opcode_fn = opcode_lookup[opcode]
                 except KeyError:
                     opcode_fn = InvalidOpcode(opcode)
+                
+                # Extra from Hugo:
+                print(
+                    "dbg --- OPCODE: 0x%x / %d (%s)" % (
+                        opcode, opcode,
+                        opcode_fn.mnemonic,
+                    ))
+                # convert state to hex, pad to 32 bytes (so 64 hex chars)
+                if n_ops < 1e3:
+                    print(f"""dbg --- STATE {dict(pc=max(0, computation.code.program_counter - 1), 
+                                                stack=list(map( 
+                                                        lambda e: (hexlify((e[1] if isinstance(e[1], bytes) else int.to_bytes(e[1], 32, 'big'))).zfill(64)),
+                                                        computation._stack.values)), 
+                                                memory=hexlify(computation._memory._bytes))}""")
 
                 if show_debug2:
                     # We dig into some internals for debug logs
@@ -362,6 +378,7 @@ class BaseComputation(ComputationAPI, Configurable):
                     opcode_fn(computation=computation)
                 except Halt:
                     break
+                n_ops += 1
 
         return computation
 
